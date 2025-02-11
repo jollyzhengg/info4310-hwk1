@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Tree of San Francisco: Where, What, and How Big?</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/topojson.v3.min.js"></script>
+  <style>
+    .neighborhood {
+      stroke: #fff;
+      stroke-width: 0.5px;
+    }
+    .legend {
+      font-size: 12px;
+    }
+    .bar {
+      fill: #9ad697;
+    }
+    .bar-label {
+      font-size: 10px;
+      text-anchor: end;
+    }
+    .avg-db-bar {
+      fill: orange;
+    }
+    .title h1 {
+    color: #523433;
+    font-size: 40px;
+    }
+    body {
+      background-color: #E0E1DD;
+      color: #0D1B2A;
+    }
+    h2 {
+      color : #E0E1DD
+    }
+    h3 {
+      color: #E0E1DD;
+      font-size: 30px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .section {
+      justify-content: center;
+      align-items: center;
+      background-color: #778DA9;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      margin: 30px;
+      font-size: 25px;
+    }
+    .block {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items:center;
+      padding: 10px;
+    }
+    p {
+      background-color: #1B263B;
+      color: #778DA9;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+    }
+    #descr {
+      width: 200px;
+      height: 300px;
+      font-size: 18px;
+    }
+    .graph {
+      background-color: #E0E1DD;
+      margin: 30px;
+    }
+    .conclusion{
+      font-size: 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="title block">
+    <h1>Tree of San Francisco: Where, What, and How Big?</h1>
+  </div>
+
+  <div class="section">
+    <h2>Tree Density in Each Neighborhood</h2>
+    <div class="block">
+      <p id= "descr">The different neighborhood is shown on the figure on the 
+        right. Neighborhoods outlined with a darker shade of green indicate 
+        larger amount of trees. Meanwhile, neighborhoods outlined with a lighter
+        shade of green indicate a smaller amount of trees. Utilize the legend 
+        in the figure on the right to understand the rough estimate of number of trees.
+      </p>
+      <svg class= "graph" id="choropleth" width="590" height="490"></svg>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Top 15 Tree Species in SF</h2>
+    <div class="block">
+      <svg class= "graph" id="barchart" width="750" height="400"></svg>
+      <p id= "descr">The bar chart indicates the most common tree species in 
+        SF. The exact number of species of tree is also indicated at the end
+        of the bar graph. We see that SF has a lot of London Plane trees and
+        New Zealand Xmas Tree with 2258 and 1561 number of trees, respectively. 
+        It is followed by the Victorian Box and Indian Laurel Fig Tree with 
+        1268 trees and 1239 trees respectively.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Average DBH of Top 15 Tree Species</h3>
+    <div class="block">
+      <p id= "descr">
+        With the name of the top 15 most common trees in SF in 
+        mind, we look at just how large these trees are, using the metric of 
+        DBH (diameter breast height). We see that the tree with the largest 
+        average DBH for tree is Red Flowering Gum, Blackwood Acacia, Indian 
+        Laurel Fig Tree 'Green Gem', and London Plane. The average DBH of these
+         trees are as follows: 20.4, 16.2, 14.8, and 14.5.
+      </p>
+      <svg id="avg-db-barchart" class="graph" width="900" height="550"></svg>
+    </div>
+  </div>
+
+  <p class="conclusion">
+    After understanding, where the trees are located, the most common trees in
+    SF, as well as the DBH of the most common 15 species of trees in SF, we 
+    can conclude that the largest trees are not necessarily the most common.
+    This allows us to understand the kinds of trees that the SF community has planted.
+  </p>
+
+  <script>
+    const svg = d3.select("#choropleth");
+    const width = svg.attr("width");
+    const height = svg.attr("height");
+    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+    const map_width = width - margin.left - margin.right;
+    const map_height = height - margin.top - margin.bottom;
+
+    const map = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const loadData = async function () {
+      const sfNeighborhoods = await d3.json("SF-Neighborhoods.geo.json");
+      const treeData = await d3.csv("Street_Tree_List-2022-01-30_FILTERED.csv");
+      const neighborhoods = topojson.feature(sfNeighborhoods, sfNeighborhoods.objects.SFNeighborhoods).features;
+
+      const projection = d3.geoMercator().fitSize([map_width, map_height], { type: "FeatureCollection", features: neighborhoods });
+      const path = d3.geoPath().projection(projection);
+
+      // Calculate tree density
+      // const treeDensity = {};
+      // treeData.forEach(d => {
+      //   const neighborhood = neighborhoods.find(f => d3.geoContains(f, [d.Longitude, d.Latitude]));
+      //   if (neighborhood) {
+      //     const name = neighborhood.properties.name;
+      //     treeDensity[name] = (treeDensity[name] || 0) + 1;
+      //   }
+      // });
+
+      // const downloadJSON = function (jsonObject, filename) {
+      //       const jsonStr = JSON.stringify(jsonObject, null, 2);
+      //       const blob = new Blob([jsonStr], { type: "application/json" });
+      //       const url = URL.createObjectURL(blob);
+      //       const a = document.createElement('a');
+      //       a.href = url;
+      //       a.download = filename;
+      //       document.body.appendChild(a);
+      //       a.click();
+      //       document.body.removeChild(a);
+      //       URL.revokeObjectURL(url);
+      //   }
+
+      // downloadJSON(treeDensity, "tree_density.json")
+
+      const treeDensity = await d3.json("tree_density.json");
+
+      const maxDensity = d3.max(Object.values(treeDensity));
+      const colorScale = d3.scaleLinear()
+        .domain([0, maxDensity])
+        .range(["#9ad697", "#0b4308"]);
+
+      map.selectAll(".neighborhood")
+        .data(neighborhoods)
+        .join("path")
+        .attr("class", "neighborhood")
+        .attr("d", path)
+        .attr("fill", d => colorScale(treeDensity[d.properties.name] || 0))
+        .attr("stroke", "#523433")
+        .attr("stroke-width", 1);
+
+      const legendHeight = 100;
+      const legendWidth = 10;
+      const legendMargin = { top: 350, right: 10, bottom: 20, left: 50 };
+
+      const legendSvg = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${map_width - legendMargin.right},${legendMargin.top})`);
+
+      legendSvg.append("text")
+        .attr("x", -30)
+        .attr("y", -10)
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .style("fill", "#523433")
+        .text("Tree Density");
+
+      const legendScale = d3.scaleLinear()
+        .domain([0, maxDensity])
+        .range([legendHeight, 0]);
+
+      const legendAxis = d3.axisRight(legendScale)
+        .ticks(5)
+        .tickFormat(d3.format(".0f"));
+
+      const legendGradient = svg.append("defs").append("linearGradient")
+        .attr("id", "legend-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "100%")
+        .attr("x2", "0%")
+        .attr("y2", "0%");
+
+      legendGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", colorScale(0));
+
+      legendGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", colorScale(maxDensity));
+
+      legendSvg.append("rect")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "url(#legend-gradient)")
+        .attr("stroke", "#523433");
+
+      legendSvg.append("g")
+        .attr("transform", `translate(${legendWidth},0)`)
+        .call(legendAxis);
+
+      const alt_data = await d3.csv("updated_tree_list.csv");
+
+      const speciesCounts = d3.rollup(alt_data, v => v.length, d => d.qSpecies);
+      const sortedSpecies = Array.from(speciesCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15);
+
+      const barSvg = d3.select("#barchart");
+      const barMargin = { top: 60, right: 20, bottom: 100, left: 200 };
+      const barWidth = barSvg.attr("width") - barMargin.left - barMargin.right;
+      const barHeight = barSvg.attr("height") - barMargin.top - barMargin.bottom;
+
+      const barChart = barSvg.append("g")
+        .attr("transform", `translate(${barMargin.left},${barMargin.top})`);
+
+      const xScale = d3.scaleLinear()
+        .domain([0, d3.max(sortedSpecies, d => d[1])])
+        .range([0, barWidth]);
+
+      const yScale = d3.scaleBand()
+        .domain(sortedSpecies.map(d => d[0]))
+        .range([0, barHeight])
+        .padding(0.2);
+
+      barChart.selectAll(".bar")
+        .data(sortedSpecies)
+        .join("rect")
+        .attr("class", "bar")
+        .attr("y", d => yScale(d[0]))
+        .attr("width", d => xScale(d[1]))
+        .attr("height", yScale.bandwidth());
+
+      barChart.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0, ${barHeight})`)
+        .call(d3.axisBottom(xScale).ticks(6))
+        .selectAll("text")
+        .style("font-size", "12px");
+
+      barChart.append("g")
+        .attr("class", "y-axis")
+        .call(d3.axisLeft(yScale))
+        .selectAll("text")
+        .style("font-size", "12px");
+
+      barChart.selectAll(".bar-label")
+        .data(sortedSpecies)
+        .join("text")
+        .attr("class", "bar-label")
+        .attr("x", d => xScale(d[1]) - 5)
+        .attr("y", d => yScale(d[0]) + yScale.bandwidth() / 2)
+        .attr("dy", "0.35em")
+        .text(d => d[1])
+        .attr("fill", "#523433");
+
+      barChart.select(".y-axis")
+        .selectAll("text")
+        .style("fill", "#523433");
+
+        d3.csv("top_15_species_avg_dbh.csv").then(function(data) {
+  // Parse the DBH values and ensure correct data format
+  const sortedSpecies = data.map(d => ({
+    name: d.qSpecies,
+    dbh: +d.DBH
+  }));
+
+  // Sort the species based on DBH
+  sortedSpecies.sort((a, b) => b.dbh - a.dbh);
+
+  const circleSvg = d3.select("#avg-db-barchart");
+  circleSvg.selectAll("*").remove();
+  const circleMargin = { top: 20, right: 20, bottom: 20, left: 20 };
+  const circleWidth = circleSvg.attr("width") - circleMargin.left - circleMargin.right;
+  const circleHeight = circleSvg.attr("height") - circleMargin.top - circleMargin.bottom;
+
+  const circleGroup = circleSvg.append("g")
+    .attr("transform", `translate(${circleWidth / 2},${circleHeight / 2})`);
+
+  const root = d3.hierarchy({ children: sortedSpecies })
+    .sum(d => d.dbh);
+
+  const scaleFactor = 1;
+  const pack = d3.pack()
+    .size([circleWidth * scaleFactor, circleHeight * scaleFactor])
+    .padding(3);
+
+  const packedData = pack(root);
+
+  const nodes = circleGroup.selectAll("circle")
+    .data(packedData.descendants().slice(1))
+    .join("circle")
+    .attr("cx", d => d.x - circleWidth / 2)
+    .attr("cy", d => d.y - circleHeight / 2)
+    .attr("r", d => d.r)
+    .attr("fill", "#9ad697")
+    .attr("stroke", "#0b4308")
+    .attr("stroke-width", 1);
+
+  const textGroups = circleGroup.selectAll("g.label-group")
+    .data(packedData.descendants().slice(1))
+    .join("g")
+    .attr("transform", d => `translate(${d.x - circleWidth / 2},${d.y - circleHeight / 2})`)
+    .attr("text-anchor", "middle");
+
+  textGroups.each(function(d) {
+    const textGroup = d3.select(this);
+    const name = d.data.name;
+    const dbh = d.data.dbh.toFixed(1);
+
+    if (name.length > 10) {
+      const splitIndex = name.lastIndexOf(" ", name.length / 2);
+      const firstLine = name.slice(0, splitIndex);
+      const secondLine = name.slice(splitIndex + 1);
+
+      textGroup.append("text")
+        .attr("y", "-8") 
+        .style("font-size", "12px")
+        .style("fill", "#523433")
+        .text(firstLine);
+
+      textGroup.append("text")
+        .attr("y", "3") 
+        .style("font-size", "12px")
+        .style("fill", "#523433")
+        .text(secondLine);
+    } else {
+      textGroup.append("text")
+        .attr("y", "-10")
+        .style("font-size", "12px")
+        .style("fill", "#523433")
+        .text(name);
+    }
+
+    // Add DBH below name
+    textGroup.append("text")
+            .attr("y", "15") 
+            .style("font-size", "12px")
+            .style("fill", "#523433")
+            .text(`Avg. DBH: ${dbh}`);
+  });
+});
+
+
+    };
+
+loadData();
+</script>
+</body>
+
+</html>
+
